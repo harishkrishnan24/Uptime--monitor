@@ -7,6 +7,7 @@
 var http = require('http');
 var url = require('url');
 var StringDecoder = require('string_decoder').StringDecoder;
+var config = require('./config');
 
 //  The server should respond to all requests with a string
 var server = http.createServer(function (req, res) {
@@ -22,9 +23,7 @@ var server = http.createServer(function (req, res) {
     var queryStringObject = parsedUrl.query;
 
     // Get the HTTP Method
-    var method = req
-        .method
-        .toLowerCase();
+    var method = req.method.toLowerCase();
 
     // Get the headers as an object
     var headers = req.headers;
@@ -40,9 +39,7 @@ var server = http.createServer(function (req, res) {
 
         // Choose the handler this request should go to. If one is not found use the not
         // found handler
-        var chosenHandler = typeof(router[trimmedPath]) !== 'undefined'
-            ? router[trimmedPath]
-            : handlers.notFound;
+        var chosenHandler = typeof (router[trimmedPath]) !== 'undefined' ? router[trimmedPath] : handlers.notFound;
 
         // Construct the data object to send to the handler
         var data = {
@@ -56,19 +53,16 @@ var server = http.createServer(function (req, res) {
         // Route the request to the handler specified in the router
         chosenHandler(data, function (statusCode, payload) {
             // Use the status code called back by the handler, or default to 200
-            statusCode = typeof(statusCode) == 'number'
-                ? statusCode
-                : 200;
+            statusCode = typeof (statusCode) == 'number' ? statusCode : 200;
 
             // Use the payload called by handler, or default to empty object
-            payload = typeof(payload) == 'object'
-                ? payload
-                : {};
+            payload = typeof (payload) == 'object' ? payload : {};
 
             // Convert the payload to a string
             var payloadString = JSON.stringify(payload);
 
             // Return the response
+            res.setHeader('Content-Type', 'application/json');
             res.writeHead(statusCode);
             res.end(payloadString);
 
@@ -79,8 +73,8 @@ var server = http.createServer(function (req, res) {
 });
 
 // Start the server, and have it listen on port 3000
-server.listen(3000, function () {
-    console.log('The server is listening on port 3000 now');
+server.listen(config.port, function () {
+    console.log('The server is listening on port', config.port, 'in', config.envName, 'mode');
 });
 
 // Define the handlers
@@ -89,7 +83,9 @@ var handlers = {};
 // Sample handler
 handlers.sample = function (data, callback) {
     // Callback a http status code, and a payload object
-    callback(406, {'name': 'sample handler'});
+    callback(406, {
+        'name': 'sample handler'
+    });
 };
 
 // Not found handler
