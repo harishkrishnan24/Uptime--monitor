@@ -8,8 +8,10 @@ var http = require('http');
 var https = require('https');
 var url = require('url');
 var StringDecoder = require('string_decoder').StringDecoder;
-var config = require('./config');
+var config = require('./lib/config');
 var fs = require('fs');
+var handlers = require('./lib/handlers');
+var helpers = require('./lib/helpers');
 
 //  Instantiating the HTTP server
 var httpServer = http.createServer(function (req, res) {
@@ -26,7 +28,9 @@ var httpsServerOptions = {
     key: fs.readFileSync('./https/key.pem'),
     cert: fs.readFileSync('./https/cert.pem')
 };
-var httpsServer = https.createServer(httpsServerOptions, function (req, res) {});
+var httpsServer = https.createServer(httpsServerOptions, function (req, res) {
+    unifiedServer(req, res);
+});
 
 // Start the HTTPS server
 httpsServer.listen(config.httpsPort, function () {
@@ -65,9 +69,9 @@ var unifiedServer = function (req, res) {
 
         // Choose the handler this request should go to. If one is not found use the not
         // found handler
-        var chosenHandler = typeof(router[trimmedPath]) !== 'undefined'
-            ? router[trimmedPath]
-            : handlers.notFound;
+        var chosenHandler = typeof (router[trimmedPath]) !== 'undefined' ?
+            router[trimmedPath] :
+            handlers.notFound;
 
         // Construct the data object to send to the handler
         var data = {
@@ -75,20 +79,19 @@ var unifiedServer = function (req, res) {
             'queryStringObject': queryStringObject,
             'method': method,
             'headers': headers,
-            'payload': buffer
+            'payload': helpers.parseJsonToObject(buffer)
         };
 
         // Route the request to the handler specified in the router
         chosenHandler(data, function (statusCode, payload) {
             // Use the status code called back by the handler, or default to 200
-            statusCode = typeof(statusCode) == 'number'
-                ? statusCode
-                : 200;
+            statusCode = typeof (statusCode) == 'number' ?
+                statusCode :
+                200;
 
             // Use the payload called by handler, or default to empty object
-            payload = typeof(payload) == 'object'
-                ? payload
-                : {};
+            payload = typeof (payload) == 'object' ?
+                payload : {};
 
             // Convert the payload to a string
             var payloadString = JSON.stringify(payload);
@@ -104,21 +107,8 @@ var unifiedServer = function (req, res) {
     });
 };
 
-// Define the handlers
-var handlers = {};
-
-// Ping handler
-handlers.ping = function (data, callback) {
-    // Callback a http status code
-    callback(200);
-};
-
-// Not found handler
-handlers.notFound = function (data, callback) {
-    callback(404);
-};
-
 // Define a request router
 var router = {
-    'ping': handlers.ping
+    'ping': handlers.ping,
+    'users': handlers.users
 };
